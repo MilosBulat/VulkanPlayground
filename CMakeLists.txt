@@ -45,6 +45,34 @@ target_link_libraries(VulkanTesting
     glm
 )
 
+# Shader Compilation Function
+function(compile_shader shader_file)
+    get_filename_component(shader_name ${shader_file} NAME_WE)
+    set(output_file "${CMAKE_CURRENT_BINARY_DIR}/shaders/${shader_name}.spv")
+
+    add_custom_command(
+        OUTPUT ${output_file}
+        COMMAND ${Vulkan_GLSLANG_VALIDATOR_EXECUTABLE} -V ${shader_file} -o ${output_file}
+        DEPENDS ${shader_file}
+        COMMENT "Compiling ${shader_file} to SPIR-V..."
+    )
+
+    # Add the compiled shader to the build target
+    set(SHADER_OUTPUTS ${SHADER_OUTPUTS} ${output_file} PARENT_SCOPE)
+endfunction()
+
+# Automatically compile all shaders in the 'shaders/' directory
+file(GLOB SHADERS "shaders/*.vert" "shaders/*.frag")
+foreach(shader ${SHADERS})
+    compile_shader(${shader})
+endforeach()
+
+# Ensure shaders are part of the final build
+add_custom_target(ShadersTarget ALL DEPENDS ${SHADER_OUTPUTS})
+
+# Ensure the executable depends on the compiled shaders
+add_dependencies(VulkanTesting ShadersTarget)
+
 # Enable multi-threaded compilation for MSVC
 if (MSVC)
     target_compile_options(VulkanTesting PRIVATE /MP)
