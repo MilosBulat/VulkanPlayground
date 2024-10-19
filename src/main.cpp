@@ -46,19 +46,7 @@ private:
         VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
-    //// ------------ Main engine --------------- //////
-
-    void initWindow() {
-        // Initialize GLFW
-        glfwInit();
-
-        // Don't create an OpenGL context
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-        // Create the GLFW window
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Window", nullptr, nullptr);
-    }
+    //// ------------ Engine Section --------------- //////
 
     void initVulkan() {
         createInstance();
@@ -70,21 +58,7 @@ private:
         createGraphicsPipeline();
     }
 
-    static std::vector<char> readFile(const std::string& filename) {
-        std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
-        if (!file.is_open()) {
-            throw std::runtime_error("failed to open file!");
-        }
-
-        size_t fileSize = (size_t)file.tellg();
-        std::vector<char> buffer(fileSize);
-        file.seekg(0);
-        file.read(buffer.data(), fileSize);
-
-        file.close();
-
-        return buffer;
     }
 
     void createGraphicsPipeline() {
@@ -391,13 +365,6 @@ private:
         }
     }
 
-    void mainLoop() {
-        // Main render loop
-        while (!glfwWindowShouldClose(window)) {
-            glfwPollEvents();
-        }
-    }
-
     void cleanup() {
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
 
@@ -560,6 +527,61 @@ private:
         }
 
         return indices.isComplete() && extensionsSupported && swapChainAdequate;
+    }
+
+    //// ------------ Utils --------------- //////
+
+    static std::vector<char> readFile(const std::string& filename) {
+        std::ifstream file(filename, std::ios::ate | std::ios::binary);
+
+        if (!file.is_open()) {
+            throw std::runtime_error("failed to open file!");
+        }
+
+        size_t fileSize = (size_t)file.tellg();
+        std::vector<char> buffer(fileSize);
+        file.seekg(0);
+        file.read(buffer.data(), fileSize);
+
+        file.close();
+
+        return buffer;
+    }
+
+    VkShaderModule createShaderModule(const std::vector<char>& code)
+    {
+        VkShaderModuleCreateInfo createInfo{};
+        createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
+        createInfo.codeSize = code.size();
+        createInfo.pCode = reinterpret_cast<const uint32_t*>(code.data());
+
+        VkShaderModule shaderModule;
+        if (vkCreateShaderModule(device, &createInfo, nullptr, &shaderModule) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create shader module!");
+        }
+
+        return shaderModule;
+    }
+
+    //// ------------ Main Loop --------------- //////
+
+    void mainLoop() {
+        // Main render loop
+        while (!glfwWindowShouldClose(window)) {
+            glfwPollEvents();
+        }
+    }
+
+    void initWindow() {
+        // Initialize GLFW
+        glfwInit();
+
+        // Don't create an OpenGL context
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+        glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+        // Create the GLFW window
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Window", nullptr, nullptr);
     }
 };
 
