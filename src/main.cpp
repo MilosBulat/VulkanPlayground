@@ -50,7 +50,8 @@ private:
 
     //// ------------ Engine Section --------------- //////
 
-    void initVulkan() {
+    void initVulkan() 
+    {
         createInstance();
         createSurface();
         selectPhyiscalDevice();
@@ -61,7 +62,8 @@ private:
         createGraphicsPipeline();
     }
 
-    void createRenderPass() {
+    void createRenderPass() 
+    {
         VkAttachmentDescription colorAttachment{};
         colorAttachment.format = swapChainImageFormat;
         colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
@@ -240,7 +242,8 @@ private:
         vkDestroyShaderModule(device, vertShaderModule, nullptr);
     }
 
-    void createInstance() {
+    void createInstance() 
+    {
         // Vulkan application info
         VkApplicationInfo appInfo{};
         appInfo.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
@@ -333,7 +336,8 @@ private:
         vkGetDeviceQueue(device, indices.presentFamily.value(), 0, &presentQueue);
     }
 
-    void createSwapChain() {
+    void createSwapChain() 
+    {
         SwapChainSupportDetails swapChainSupport = querySwapChainSupport(physicalDevice);
 
         VkSurfaceFormatKHR surfaceFormat = chooseSwapSurfaceFormat(swapChainSupport.formats);
@@ -419,7 +423,8 @@ private:
         }
     }
 
-    void cleanup() {
+    void cleanup() 
+    {
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
         vkDestroyRenderPass(device, renderPass, nullptr);
@@ -454,7 +459,8 @@ private:
         return VkSurfaceFormatKHR();
     }
 
-    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) {
+    VkPresentModeKHR chooseSwapPresentMode(const std::vector<VkPresentModeKHR>& availablePresentModes) 
+    {
         for (const auto& availablePresentMode : availablePresentModes) {
             if (availablePresentMode == VK_PRESENT_MODE_MAILBOX_KHR) {
                 return availablePresentMode;
@@ -495,7 +501,8 @@ private:
         }
     };
 
-    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicialDeviceObj) {
+    QueueFamilyIndices findQueueFamilies(VkPhysicalDevice physicialDeviceObj) 
+    {
         QueueFamilyIndices indices;
         
         uint32_t queueFamilyCount = 0;
@@ -533,7 +540,8 @@ private:
         std::vector<VkPresentModeKHR> presentModes;
     };
 
-    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physicialDeviceObj) {
+    SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice physicialDeviceObj) 
+    {
         SwapChainSupportDetails details;
 
         vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicialDeviceObj, surface, &details.capabilities);
@@ -557,7 +565,8 @@ private:
         return details;
     }
 
-    bool checkDeviceExtensionSupport(VkPhysicalDevice physicialDeviceObj) {
+    bool checkDeviceExtensionSupport(VkPhysicalDevice physicialDeviceObj) 
+    {
         uint32_t extensionCount;
         vkEnumerateDeviceExtensionProperties(physicialDeviceObj, nullptr, &extensionCount, nullptr);
 
@@ -573,7 +582,8 @@ private:
         return requiredExtensions.empty();
     }
 
-    bool isDeviceSuitable(VkPhysicalDevice physicialDeviceObj) {
+    bool isDeviceSuitable(VkPhysicalDevice physicialDeviceObj) 
+    {
         QueueFamilyIndices indices = findQueueFamilies(physicialDeviceObj);
 
         bool extensionsSupported = checkDeviceExtensionSupport(physicialDeviceObj);
@@ -589,7 +599,8 @@ private:
 
     //// ------------ Utils --------------- //////
 
-    static std::vector<char> readFile(const std::string& filename) {
+    static std::vector<char> readFile(const std::string& filename) 
+    {
         std::ifstream file(filename, std::ios::ate | std::ios::binary);
 
         if (!file.is_open()) {
@@ -623,14 +634,16 @@ private:
 
     //// ------------ Main Loop --------------- //////
 
-    void mainLoop() {
+    void mainLoop() 
+    {
         // Main render loop
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
         }
     }
 
-    void initWindow() {
+    void initWindow() 
+    {
         // Initialize GLFW
         glfwInit();
 
@@ -643,7 +656,8 @@ private:
     }
 };
 
-int main() {
+int main() 
+{
     VulkanApp app;
 
     try {
