@@ -75,10 +75,10 @@ endforeach()
 add_custom_target(ShadersTarget ALL DEPENDS ${SHADER_OUTPUTS})
 
 # Grab the textures too
-file(GLOB TEXTURES "textures/*.*")
+file(GLOB TEXTURES "assets/*.*")
 foreach(texture ${TEXTURES})
     get_filename_component(texture_name ${texture} NAME)
-    set(output_file "${CMAKE_CURRENT_BINARY_DIR}/textures/${texture_name}")
+    set(output_file "${CMAKE_CURRENT_BINARY_DIR}/assets/${texture_name}")
 
     configure_file(${texture} ${output_file} COPYONLY)
     set(TEXTURE_OUTPUTS ${TEXTURE_OUTPUTS} ${output_file} PARENT_SCOPE)
