@@ -179,17 +179,11 @@ private:
         glfwTerminate();
     }
 
-    void cleanupSwapChain()
     {
-        for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
-            vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
         }
 
-        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
-            vkDestroyImageView(device, swapChainImageViews[i], nullptr);
         }
 
-        vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
 
     void createSyncObjects() 
@@ -848,24 +842,55 @@ private:
         return shaderModule;
     }
 
-    void initWindow()
-    {
-        // Initialize GLFW
-        glfwInit();
-
-        // Don't create an OpenGL context
-        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-
-        // Create the GLFW window
-        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Window", nullptr, nullptr);
-        glfwSetWindowUserPointer(window, this);
-        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-    }
-
     static void framebufferResizeCallback(GLFWwindow* window, int width, int height) 
     {
         auto app = reinterpret_cast<VulkanApp*>(glfwGetWindowUserPointer(window));
         app->framebufferResized = true;
+    }
+
+    uint32_t findMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) 
+    {
+        VkPhysicalDeviceMemoryProperties memProperties;
+        vkGetPhysicalDeviceMemoryProperties(physicalDevice, &memProperties);
+
+        for (uint32_t i = 0; i < memProperties.memoryTypeCount; i++) {
+            if ((typeFilter & (1 << i)) && (memProperties.memoryTypes[i].propertyFlags & properties) == properties) {
+                return i;
+            }
+        }
+
+        throw std::runtime_error("failed to find suitable memory type!");
+    }
+
+    void recreateSwapChain()
+    {
+        int width = 0, height = 0;
+        glfwGetFramebufferSize(window, &width, &height);
+        while (width == 0 || height == 0) {
+            glfwGetFramebufferSize(window, &width, &height);
+            glfwWaitEvents();
+        }
+
+        vkDeviceWaitIdle(device);
+
+        cleanupSwapChain();
+
+        createSwapChain();
+        createImageViews();
+        createFramebuffers();
+    }
+
+    void cleanupSwapChain()
+    {
+        for (size_t i = 0; i < swapChainFramebuffers.size(); i++) {
+            vkDestroyFramebuffer(device, swapChainFramebuffers[i], nullptr);
+        }
+
+        for (size_t i = 0; i < swapChainImageViews.size(); i++) {
+            vkDestroyImageView(device, swapChainImageViews[i], nullptr);
+        }
+
+        vkDestroySwapchainKHR(device, swapChain, nullptr);
     }
 
     //// ------------ Validation layer --------------- //////
@@ -929,27 +954,7 @@ private:
         return VK_FALSE;
     }
 
-    //// ------------ Recreate swap chains --------------- //////
-
-    void recreateSwapChain() 
-    {
-        int width = 0, height = 0;
-        glfwGetFramebufferSize(window, &width, &height);
-        while (width == 0 || height == 0) {
-            glfwGetFramebufferSize(window, &width, &height);
-            glfwWaitEvents();
-        }
-
-        vkDeviceWaitIdle(device);
-
-        cleanupSwapChain();
-
-        createSwapChain();
-        createImageViews();
-        createFramebuffers();
-    }
-
-    //// ------------ Main Loop --------------- //////
+    //// ------------ Main + Drawing functions --------------- //////
 
     void mainLoop() 
     {
@@ -960,6 +965,20 @@ private:
         }
 
         vkDeviceWaitIdle(device);
+    }
+
+    void initWindow()
+    {
+        // Initialize GLFW
+        glfwInit();
+
+        // Don't create an OpenGL context
+        glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+        // Create the GLFW window
+        window = glfwCreateWindow(WIDTH, HEIGHT, "Vulkan Window", nullptr, nullptr);
+        glfwSetWindowUserPointer(window, this);
+        glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
     }
 
     void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex)
