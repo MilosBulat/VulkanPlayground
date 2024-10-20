@@ -35,8 +35,12 @@ add_executable(VulkanTesting
 # Find Vulkan SDK
 find_package(Vulkan REQUIRED)
 
-# Include GLM headers (since it’s header-only, no linking needed)
-target_include_directories(VulkanTesting PRIVATE ${glm_SOURCE_DIR})
+# Include headers
+target_include_directories(VulkanTesting 
+    PRIVATE 
+    includes 
+    ${glm_SOURCE_DIR}
+)
 
 # Link Vulkan and GLFW to the project
 target_link_libraries(VulkanTesting
@@ -70,8 +74,19 @@ endforeach()
 # Ensure shaders are part of the final build
 add_custom_target(ShadersTarget ALL DEPENDS ${SHADER_OUTPUTS})
 
+# Grab the textures too
+file(GLOB TEXTURES "textures/*.*")
+foreach(texture ${TEXTURES})
+    get_filename_component(texture_name ${texture} NAME)
+    set(output_file "${CMAKE_CURRENT_BINARY_DIR}/textures/${texture_name}")
+
+    configure_file(${texture} ${output_file} COPYONLY)
+    set(TEXTURE_OUTPUTS ${TEXTURE_OUTPUTS} ${output_file} PARENT_SCOPE)
+endforeach()
+add_custom_target(TexturesTarget ALL DEPENDS ${TEXTURE_OUTPUTS})
+
 # Ensure the executable depends on the compiled shaders
-add_dependencies(VulkanTesting ShadersTarget)
+add_dependencies(VulkanTesting ShadersTarget TexturesTarget)
 
 # Enable multi-threaded compilation for MSVC
 if (MSVC)
