@@ -1,3 +1,8 @@
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_vulkan.h"
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 
@@ -121,6 +126,7 @@ public:
     void run() {
         initWindow();
         initVulkan();
+        UIInit();
         mainLoop();
         cleanup();
     }
@@ -173,6 +179,7 @@ private:
     std::vector<void*>              uniformBuffersMapped;
 
     VkDescriptorPool                descriptorPool;
+    VkDescriptorPool                descriptorPoolUI;
     std::vector<VkDescriptorSet>    descriptorSets;
 
     uint32_t                        mipLevels;
@@ -230,6 +237,8 @@ private:
     void cleanup()
     {
         cleanupSwapChain();
+
+        UIDestroy();
 
         vkDestroyPipeline(device, graphicsPipeline, nullptr);
         vkDestroyPipelineLayout(device, pipelineLayout, nullptr);
@@ -489,6 +498,19 @@ private:
         if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPool) != VK_SUCCESS) {
             throw std::runtime_error("failed to create descriptor pool!");
         }
+
+        VkDescriptorPoolSize poolSizeUI = { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 1 };
+
+        VkDescriptorPoolCreateInfo poolInfoUI{};
+        poolInfoUI.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
+        poolInfoUI.poolSizeCount = 1;
+        poolInfoUI.pPoolSizes = &poolSizeUI;
+        poolInfoUI.maxSets = 1;
+        poolInfoUI.flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT;
+
+        if (vkCreateDescriptorPool(device, &poolInfo, nullptr, &descriptorPoolUI) != VK_SUCCESS) {
+            throw std::runtime_error("failed to create descriptor pool for UI!");
+        }
     }
 
     void createUniformBuffers() 
@@ -520,10 +542,10 @@ private:
 
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
         samplerLayoutBinding.binding = 1;
-        samplerLayoutBinding.descriptorCount = 1;
         samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.pImmutableSamplers = nullptr;
+        samplerLayoutBinding.descriptorCount = 1;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        samplerLayoutBinding.pImmutableSamplers = nullptr;
 
         std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
@@ -1787,6 +1809,70 @@ private:
         return VK_FALSE;
     }
 
+    //// ------------ UI Functions --------------------------------------------------------------------------------------------------------------------- //////
+
+    void UIInit()
+    {
+        // ImGui initialization
+        IMGUI_CHECKVERSION();
+        ImGui::CreateContext();
+
+        ImGuiIO& io = ImGui::GetIO();
+        io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+
+        ImGui::StyleColorsDark();  // Set ImGui style to dark theme
+
+        // Setup Platform/Renderer bindings
+        ImGui_ImplGlfw_InitForVulkan(window, true);
+
+        ImGui_ImplVulkan_InitInfo init_info = {};
+        init_info.Instance = instance;
+        init_info.PhysicalDevice = physicalDevice;
+        init_info.Device = device;
+        init_info.QueueFamily = findQueueFamilies(physicalDevice).graphicsFamily.value();
+        init_info.Queue = graphicsQueue;
+        init_info.PipelineCache = VK_NULL_HANDLE;
+        init_info.DescriptorPool = descriptorPoolUI;
+        init_info.Subpass = 0;
+        init_info.MinImageCount = 2;
+        init_info.ImageCount = 2;
+        init_info.MSAASamples = msaaSamples;
+        init_info.Allocator = VK_NULL_HANDLE;
+        init_info.CheckVkResultFn = VK_NULL_HANDLE;
+        init_info.RenderPass = renderPass;
+        ImGui_ImplVulkan_Init(&init_info);
+    }
+
+    void UIDestroy()
+    {
+        // Destroy ImGui
+        ImGui_ImplVulkan_Shutdown();
+        ImGui_ImplGlfw_Shutdown();
+        ImGui::DestroyContext();
+        vkDestroyDescriptorPool(device, descriptorPoolUI, nullptr);
+    }
+
+    void UINewFrame()
+    {
+        ImGui_ImplVulkan_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+
+        ImGui::NewFrame();
+        UIRender();
+        ImGui::Render();
+    }
+
+    void UIRender()
+    {
+        ImGui::ShowDemoWindow();
+    }
+
+    void UIRecordCommandBuffer(VkCommandBuffer commandBuffer)
+    {
+        ImDrawData* draw_data = ImGui::GetDrawData();
+        ImGui_ImplVulkan_RenderDrawData(draw_data, commandBuffer);
+    }
+
     //// ------------ Main + Drawing functions --------------------------------------------------------------------------------------------------------- //////
 
     void mainLoop() 
@@ -1794,6 +1880,9 @@ private:
         // Main render loop
         while (!glfwWindowShouldClose(window)) {
             glfwPollEvents();
+            
+            UINewFrame();
+
             drawFrame();
         }
 
@@ -1867,6 +1956,9 @@ private:
         vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineLayout, 0, 1, &descriptorSets[currentFrame], 0, nullptr);
 
         vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(indices.size()), 1, 0, 0, 0);
+
+        // Record the command buffer of the UI here.
+        UIRecordCommandBuffer(commandBuffer);
 
         vkCmdEndRenderPass(commandBuffer);
 
