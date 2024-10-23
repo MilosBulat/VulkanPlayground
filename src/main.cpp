@@ -1263,7 +1263,12 @@ private:
         VkPhysicalDeviceFeatures supportedFeatures;
         vkGetPhysicalDeviceFeatures(physicialDeviceObj, &supportedFeatures);
 
-        return QFIndices.isComplete() && extensionsSupported && swapChainAdequate && supportedFeatures.samplerAnisotropy;
+        VkPhysicalDeviceProperties properties;
+        vkGetPhysicalDeviceProperties(physicialDeviceObj, &properties);
+
+        return properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU 
+            && QFIndices.isComplete() && extensionsSupported
+            && swapChainAdequate && supportedFeatures.samplerAnisotropy;
     }
 
     //// ------------ Utils --------------------------------------------------------------------------------------------------------- //////
@@ -1864,7 +1869,8 @@ private:
 
     void UIRender()
     {
-        ImGui::ShowDemoWindow();
+        static bool metricsWindow = true;
+        ImGui::ShowMetricsWindow(&metricsWindow);
     }
 
     void UIRecordCommandBuffer(VkCommandBuffer commandBuffer)
