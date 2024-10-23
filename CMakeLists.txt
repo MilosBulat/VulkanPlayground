@@ -105,9 +105,14 @@ endforeach()
 add_custom_target(ShadersTarget ALL DEPENDS ${SHADER_OUTPUTS})
 
 # Grab the assets too
-file(GLOB ASSETS "assets/*.*")
-CopyFilesFunc("assets" "${ASSETS}")
+file(GLOB ASSETS "assets/Spartan/*.*")
+CopyFilesFunc("assets/Spartan" "${ASSETS}")
 set(ASSET_OUTPUTS "${COPY_OUTPUT}")
+
+file(GLOB ASSETS "assets/Spartan/Textures/*.*")
+CopyFilesFunc("assets/Spartan/Textures" "${ASSETS}")
+set(ASSET_OUTPUTS ${ASSET_OUTPUTS} "${COPY_OUTPUT}")
+
 add_custom_target(AssetsTarget ALL DEPENDS ${ASSET_OUTPUTS})
 
 # Ensure the executable depends on the compiled shaders
