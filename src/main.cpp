@@ -154,6 +154,13 @@ struct Texture
     VkSampler                   textureSampler;
 };
 
+struct MaterialBufferObject
+{
+    glm::lowp_uint64        colorTextureId;
+    glm::lowp_uint64        normalTextureId;
+    glm::lowp_uint64        metallicTextureId;
+};
+
 // Halo model constants
 const std::string HALO_MODEL_PATH = "assets/Spartan/Spartan.obj";
 const std::string HALO_MTL_PATH = "assets/Spartan/Spartan.mtl";
@@ -166,8 +173,6 @@ static std::vector<TextureLoad> HaloModelTextures = {
     {ETextureType::eTexture_None, "assets/Spartan/Textures/Spartan_Undersuit_Mat_Specular.png", 4},
     {ETextureType::eTexture_None, "assets/Spartan/Textures/Spartan_Undersuit_Mat_AO.png", 4},
 };
-
-static uint16_t numberOfTextures = 3;
 
 class VulkanApp {
 public:
@@ -189,6 +194,7 @@ private:
     VkInstance                      instance;
     VkSurfaceKHR                    surface;
     VkPhysicalDevice                physicalDevice;
+    VkPhysicalDeviceProperties      physicalDeviceProperties;
     VkDevice                        device;
     VkPhysicalDeviceFeatures        deviceFeatures{};
 
@@ -225,6 +231,11 @@ private:
     std::vector<VkDeviceMemory>     uniformBuffersMemory;
     std::vector<void*>              uniformBuffersMapped;
 
+    std::vector<VkBuffer>           materialBuffers;
+    std::vector<VkDeviceMemory>     materialBuffersMemory;
+    std::vector<void*>              materialBuffersMapped;
+    unsigned                        materialBufferSize;
+
     VkDescriptorPool                descriptorPool;
     VkDescriptorPool                descriptorPoolUI;
     std::vector<VkDescriptorSet>    descriptorSets;
@@ -242,6 +253,7 @@ private:
 
     VkDebugUtilsMessengerEXT        debugMessenger;
 
+    uint32_t                        totalNumOfTextures = 0;
     uint32_t                        totalNumOfShapes = 0;
     uint32_t                        currentFrame = 0;
     bool                            framebufferResized = false;
@@ -250,6 +262,8 @@ private:
 
     void initVulkan() 
     {
+        loadModel();
+
         createInstance();
         // setupDebugMessenger();
         createSurface();
@@ -266,10 +280,10 @@ private:
         createFramebuffers();
         LoadTextureImages();
         CreateTextureSamplers();
-        loadModel();
         createVertexBuffer();
         createIndexBuffer();
         createUniformBuffers();
+        CreateMaterialBuffer();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
@@ -287,6 +301,9 @@ private:
         vkDestroyRenderPass(device, renderPass, nullptr);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            vkDestroyBuffer(device, materialBuffers[i], nullptr);
+            vkFreeMemory(device, materialBuffersMemory[i], nullptr);
+
             vkDestroyBuffer(device, uniformBuffers[i], nullptr);
             vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
         }
@@ -389,6 +406,12 @@ private:
 
             totalNumOfShapes++;
         }
+
+        for (auto& loadTexture : HaloModelTextures)
+        {
+            if (loadTexture.textureType != eTexture_None)
+                totalNumOfTextures++;
+        }
     }
 
     void createDepthResources() 
@@ -417,11 +440,18 @@ private:
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
         samplerLayoutBinding.binding = 1;
         samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-        samplerLayoutBinding.descriptorCount = numberOfTextures;
+        samplerLayoutBinding.descriptorCount = totalNumOfTextures;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         samplerLayoutBinding.pImmutableSamplers = nullptr;
 
-        std::array<VkDescriptorSetLayoutBinding, 2> bindings = { uboLayoutBinding, samplerLayoutBinding };
+        VkDescriptorSetLayoutBinding materialLayoutBinding{};
+        materialLayoutBinding.binding = 2;
+        materialLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        materialLayoutBinding.descriptorCount = totalNumOfShapes;
+        materialLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        materialLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
+        std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding, samplerLayoutBinding, materialLayoutBinding };
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -448,12 +478,20 @@ private:
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
         {
-            VkDescriptorBufferInfo bufferInfo{};
-            bufferInfo.buffer = uniformBuffers[i];
-            bufferInfo.offset = 0;
-            bufferInfo.range = sizeof(UniformBufferObject);
+            VkDescriptorBufferInfo uniformBufferInfo{};
+            uniformBufferInfo.buffer = uniformBuffers[i];
+            uniformBufferInfo.offset = 0;
+            uniformBufferInfo.range = sizeof(UniformBufferObject);
 
-            std::vector<VkDescriptorImageInfo> imageInfos(textures.size());
+            std::vector<VkDescriptorBufferInfo> materialBufferInfos(totalNumOfShapes);
+            for (unsigned matId = 0; matId < materialBufferInfos.size(); matId++)
+            {
+                materialBufferInfos[matId].buffer = materialBuffers[i];
+                materialBufferInfos[matId].offset = materialBufferSize * matId;
+                materialBufferInfos[matId].range = materialBufferSize;
+            }
+
+            std::vector<VkDescriptorImageInfo> imageInfos(totalNumOfTextures);
             for (unsigned texId = 0; texId < imageInfos.size(); texId++)
             {
                 imageInfos[texId].imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -461,7 +499,7 @@ private:
                 imageInfos[texId].sampler = textures[texId].textureSampler;
             }
 
-            std::array<VkWriteDescriptorSet, 2> descriptorWrites{};
+            std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
 
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[0].dstSet = descriptorSets[i];
@@ -469,7 +507,7 @@ private:
             descriptorWrites[0].dstArrayElement = 0;
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &bufferInfo;
+            descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
 
             descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[1].dstSet = descriptorSets[i];
@@ -479,17 +517,27 @@ private:
             descriptorWrites[1].descriptorCount = static_cast<uint32_t>(imageInfos.size());
             descriptorWrites[1].pImageInfo = imageInfos.data();
 
+            descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[2].dstSet = descriptorSets[i];
+            descriptorWrites[2].dstBinding = 2;
+            descriptorWrites[2].dstArrayElement = 0;
+            descriptorWrites[2].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrites[2].descriptorCount = static_cast<uint32_t>(materialBufferInfos.size());
+            descriptorWrites[2].pBufferInfo = materialBufferInfos.data();
+
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         }
     }
 
     void createDescriptorPool() 
     {
-        std::array<VkDescriptorPoolSize, 2> poolSizes{};
+        std::array<VkDescriptorPoolSize, 3> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -530,6 +578,26 @@ private:
             );
 
             vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+        }
+    }
+
+    void CreateMaterialBuffer()
+    {
+        auto minOffset = physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
+        materialBufferSize = sizeof(MaterialBufferObject) < minOffset ? minOffset : sizeof(MaterialBufferObject);
+        VkDeviceSize bufferSize = materialBufferSize * totalNumOfShapes;
+
+        materialBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        materialBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        materialBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                materialBuffers[i], materialBuffersMemory[i]
+            );
+
+            vkMapMemory(device, materialBuffersMemory[i], 0, bufferSize, 0, &materialBuffersMapped[i]);
         }
     }
 
@@ -975,6 +1043,8 @@ private:
                 break;
             }
         }
+
+        vkGetPhysicalDeviceProperties(physicalDevice, &physicalDeviceProperties);
     }
 
     // Create a logical device and fill in the data structures.
@@ -1116,11 +1186,7 @@ private:
         samplerInfo.addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerInfo.addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT;
         samplerInfo.anisotropyEnable = VK_TRUE;
-
-        VkPhysicalDeviceProperties properties{};
-        vkGetPhysicalDeviceProperties(physicalDevice, &properties);
-        samplerInfo.maxAnisotropy = properties.limits.maxSamplerAnisotropy;
-
+        samplerInfo.maxAnisotropy = physicalDeviceProperties.limits.maxSamplerAnisotropy;
         samplerInfo.borderColor = VK_BORDER_COLOR_INT_OPAQUE_BLACK;
         samplerInfo.unnormalizedCoordinates = VK_FALSE;
         samplerInfo.compareEnable = VK_FALSE;
@@ -1257,7 +1323,6 @@ private:
     struct QueueFamilyIndices {
         std::optional <uint32_t>    graphicsFamily;
         std::optional<uint32_t>     presentFamily;
-
 
         bool isComplete() {
             return graphicsFamily.has_value() && presentFamily.has_value();
@@ -2050,6 +2115,11 @@ private:
         memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
     }
 
+    void updateMaterialBuffer(uint32_t currentImage)
+    {
+        memset(materialBuffersMapped[currentImage], 0, materialBufferSize * totalNumOfShapes);
+    }
+
     void drawFrame() 
     {
         // Wait for previous frame to finish
@@ -2072,6 +2142,7 @@ private:
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
         updateUniformBuffer(currentFrame);
+        updateMaterialBuffer(currentFrame);
 
         vkResetCommandBuffer(commandBuffers[currentFrame], 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
