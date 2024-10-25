@@ -147,6 +147,7 @@ struct Texture
 {
     unsigned                    materialId;
     uint32_t                    mipLevels;
+    ETextureType                textureType;
 
     VkImage                     textureImage;
     VkImageView                 textureImageView;
@@ -159,19 +160,68 @@ struct MaterialBufferObject
     glm::lowp_uint64        colorTextureId;
     glm::lowp_uint64        normalTextureId;
     glm::lowp_uint64        metallicTextureId;
+    glm::float64            padding[5];
 };
 
 // Halo model constants
 const std::string HALO_MODEL_PATH = "assets/Spartan/Spartan.obj";
-const std::string HALO_MTL_PATH = "assets/Spartan/Spartan.mtl";
+const std::string HALO_MTL_PATH = "assets\\Spartan";
 
 static std::vector<TextureLoad> HaloModelTextures = {
-    {ETextureType::eTexture_Diffuse, "assets/Spartan/Textures/Spartan_Undersuit_Mat_BaseColor.png", 4},
-    {ETextureType::eTexture_Normal, "assets/Spartan/Textures/Spartan_Undersuit_Mat_Normal.png", 4},
-    {ETextureType::eTexture_Metallic, "assets/Spartan/Textures/Spartan_Undersuit_Mat_Metallic.png", 4},
-    {ETextureType::eTexture_None, "assets/Spartan/Textures/Spartan_Undersuit_Mat_Roughness.png", 4},
-    {ETextureType::eTexture_None, "assets/Spartan/Textures/Spartan_Undersuit_Mat_Specular.png", 4},
-    {ETextureType::eTexture_None, "assets/Spartan/Textures/Spartan_Undersuit_Mat_AO.png", 4},
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Arms_Mat_BaseColor.png",  0},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Normal.png",     0},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Metallic.png",   0},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Roughness.png",  0},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Specular.png",   0},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_AO.png",         0},
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Chest_Mat_BaseColor.png",      1},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Normal.png",         1},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Metallic.png",       1},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Roughness.png",      1},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Specular.png",       1},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_AO.png",             1},
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Ears_Mat_BaseColor.png",  2},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Normal.png",     2},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Metallic.png",   2},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Roughness.png",  2},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Specular.png",   2},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_AO.png",         2},
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Helmet_Mat_BaseColor.png",  3},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Normal.png",     3},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Metallic.png",   3},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Roughness.png",  3},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Specular.png",   3},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_AO.png",         3},
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Legs_Mat_BaseColor.png",  4},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Normal.png",     4},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Metallic.png",   4},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Roughness.png",  4},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Specular.png",   4},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_AO.png",         4},
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/ODST_Shoulder_Mat_BaseColor.png",  5},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Normal.png",     5},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Metallic.png",   5},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Roughness.png",  5},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Specular.png",   5},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_AO.png",         5},
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Undersuit_Mat_BaseColor.png",  6},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Normal.png",     6},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Metallic.png",   6},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Roughness.png",  6},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Specular.png",   6},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_AO.png",         6},
+
+    // Skipping 7
+
+    {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/lambert1_Colour-Opacity.png",    8},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/lambert1_Nrm.png",               8},
+    {ETextureType::eTexture_None,       "assets/Spartan/Textures/lambert1_Roughness.png",         8},
 };
 
 class VulkanApp {
@@ -251,10 +301,11 @@ private:
 
     std::vector<Texture>            textures;
 
+    std::vector<MaterialBufferObject> materials;
+
     VkDebugUtilsMessengerEXT        debugMessenger;
 
     uint32_t                        totalNumOfTextures = 0;
-    uint32_t                        totalNumOfShapes = 0;
     uint32_t                        currentFrame = 0;
     bool                            framebufferResized = false;
 
@@ -368,17 +419,19 @@ private:
     {
         tinyobj::attrib_t attrib;
         std::vector<tinyobj::shape_t> shapes;
-        std::vector<tinyobj::material_t> materials;
+        std::vector<tinyobj::material_t> loadMaterials;
         std::string warn, err;
 
-        if (!tinyobj::LoadObj(&attrib, &shapes, &materials, &warn, &err, HALO_MODEL_PATH.c_str())) {
+        if (!tinyobj::LoadObj(&attrib, &shapes, &loadMaterials, &warn, &err, HALO_MODEL_PATH.c_str(), HALO_MTL_PATH.c_str(), true)) {
             throw std::runtime_error(warn + err);
         }
 
         std::unordered_map<Vertex, uint32_t> uniqueVertices{};
         for (const auto& shape : shapes) 
         {
-            for (const auto& index : shape.mesh.indices) {
+            unsigned currVertId = 0, currFaceId = 0;
+            for (const auto& index : shape.mesh.indices) 
+            {
                 Vertex vertex{};
 
                 vertex.pos = {
@@ -393,8 +446,7 @@ private:
                 };
 
                 vertex.color = { 1.0f, 1.0f, 1.0f };
-
-                vertex.matInd = totalNumOfShapes;
+                vertex.matInd = shape.mesh.material_ids[currFaceId];
 
                 if (uniqueVertices.count(vertex) == 0) {
                     uniqueVertices[vertex] = static_cast<uint32_t>(vertices.size());
@@ -402,9 +454,13 @@ private:
                 }
 
                 indices.push_back(uniqueVertices[vertex]);
+
+                currVertId++;
+                currFaceId = currVertId / 3;
             }
 
-            totalNumOfShapes++;
+            // Triangulate is on so every face has 3 vertices
+
         }
 
         for (auto& loadTexture : HaloModelTextures)
@@ -412,6 +468,8 @@ private:
             if (loadTexture.textureType != eTexture_None)
                 totalNumOfTextures++;
         }
+
+        materials.resize(loadMaterials.size());
     }
 
     void createDepthResources() 
@@ -447,7 +505,7 @@ private:
         VkDescriptorSetLayoutBinding materialLayoutBinding{};
         materialLayoutBinding.binding = 2;
         materialLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        materialLayoutBinding.descriptorCount = totalNumOfShapes;
+        materialLayoutBinding.descriptorCount = materials.size();
         materialLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         materialLayoutBinding.pImmutableSamplers = nullptr; // Optional
 
@@ -483,7 +541,7 @@ private:
             uniformBufferInfo.offset = 0;
             uniformBufferInfo.range = sizeof(UniformBufferObject);
 
-            std::vector<VkDescriptorBufferInfo> materialBufferInfos(totalNumOfShapes);
+            std::vector<VkDescriptorBufferInfo> materialBufferInfos(materials.size());
             for (unsigned matId = 0; matId < materialBufferInfos.size(); matId++)
             {
                 materialBufferInfos[matId].buffer = materialBuffers[i];
@@ -585,7 +643,7 @@ private:
     {
         auto minOffset = physicalDeviceProperties.limits.minUniformBufferOffsetAlignment;
         materialBufferSize = sizeof(MaterialBufferObject) < minOffset ? minOffset : sizeof(MaterialBufferObject);
-        VkDeviceSize bufferSize = materialBufferSize * totalNumOfShapes;
+        VkDeviceSize bufferSize = materialBufferSize * materials.size();
 
         materialBuffers.resize(MAX_FRAMES_IN_FLIGHT);
         materialBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
@@ -1239,6 +1297,8 @@ private:
 
         Texture newTexture;
         newTexture.mipLevels = static_cast<uint32_t>(std::floor(std::log2(std::max(texWidth, texHeight)))) + 1;
+        newTexture.textureType = textureLoad.textureType;
+        newTexture.materialId = textureLoad.materialId;
 
         VkBuffer stagingBuffer;
         VkDeviceMemory stagingBufferMemory;
@@ -1272,7 +1332,34 @@ private:
 
         createTextureImageView(newTexture);
 
+        PopulateMaterialIds(newTexture, textures.size());
         textures.push_back(newTexture);
+    }
+
+    void PopulateMaterialIds(Texture& newTexture, size_t textureId)
+    {
+        if (newTexture.materialId >= materials.size())
+            throw std::runtime_error("Material ID is out of scope of the current mesh!");
+
+        switch (newTexture.textureType)
+        {
+            case (ETextureType::eTexture_Diffuse):
+                materials[newTexture.materialId].colorTextureId = textureId;
+                break;
+
+            case (ETextureType::eTexture_Normal):
+                materials[newTexture.materialId].normalTextureId = textureId;
+                break;
+
+            case (ETextureType::eTexture_Metallic):
+                materials[newTexture.materialId].metallicTextureId = textureId;
+                break;
+
+            case (ETextureType::eTexture_None):
+            default:
+                throw std::runtime_error("Undefined texture sneaked in the list of textures!");
+                break;
+        }
     }
 
     //// ------------ Hardware checks --------------------------------------------------------------------------------------------------------- //////
@@ -2108,7 +2195,7 @@ private:
         UniformBufferObject ubo{};
         ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
         ubo.model = glm::rotate(ubo.model, time * glm::radians(15.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 0.0f, 1.0f));
+        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.2f), glm::vec3(0.0f, 0.0f, 0.2f), glm::vec3(0.0f, 0.0f, 1.0f));
         ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
         ubo.proj[1][1] *= -1; // OpenGL uses inverted Y coord
 
@@ -2117,7 +2204,14 @@ private:
 
     void updateMaterialBuffer(uint32_t currentImage)
     {
-        memset(materialBuffersMapped[currentImage], 0, materialBufferSize * totalNumOfShapes);
+        unsigned i = 0;
+        for (auto& material : materials)
+        {
+            char* destinationPtr = static_cast<char*>(materialBuffersMapped[currentImage]);
+            destinationPtr += materialBufferSize * i;
+            memcpy(destinationPtr, &material, sizeof(material));
+            i++;
+        }
     }
 
     void drawFrame() 

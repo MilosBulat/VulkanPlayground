@@ -1,0 +1,21 @@
+#version 450
+
+// #define DEBUG_SHOW_MATERIALS 1
+
+#ifdef DEBUG_SHOW_MATERIALS
+void debugShowMaterials()
+{
+    if (fragMaterialId == 0)
+        outColor = vec4(0.0f, 0.2f, 0.0f, 1.0f);
+    else if (fragMaterialId == 1)
+        outColor = vec4(0.0f, 0.4f, 0.0f, 1.0f);
+    else if (fragMaterialId == 2)
+        outColor = vec4(0.0f, 0.6f, 0.0f, 1.0f);
+    else if (fragMaterialId == 3)
+        outColor = vec4(0.0f, 0.8f, 0.0f, 1.0f);
+    else if (fragMaterialId == 4)
+        outColor = vec4(0.0f, 1.0f, 0.0f, 1.0f);
+    else
+        outColor = vec4(1.0f, 0.0f, 0.0f, 1.0f);
+}
+#endif
