@@ -122,16 +122,17 @@ template<> struct std::hash<Vertex> {
     }
 };
 
-struct UniformBufferObject {
-    glm::mat4 model;
-    glm::mat4 view;
-    glm::mat4 proj;
+struct VertexDataBufferObject {
+    glm::mat4                model;
+    glm::mat4                view;
+    glm::mat4                proj;
 };
 
 enum ETextureType {
     eTexture_Diffuse,
     eTexture_Normal,
     eTexture_Metallic,
+    eTexture_Roughness,
 
     eTexture_None,
 };
@@ -160,7 +161,8 @@ struct MaterialBufferObject
     glm::lowp_uint64        colorTextureId;
     glm::lowp_uint64        normalTextureId;
     glm::lowp_uint64        metallicTextureId;
-    glm::float64            padding[5];
+    glm::lowp_uint64        roughnessTextureId;
+    glm::float64            padding[4];
 };
 
 // Halo model constants
@@ -169,59 +171,59 @@ const std::string HALO_MTL_PATH = "assets\\Spartan";
 
 static std::vector<TextureLoad> HaloModelTextures = {
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Arms_Mat_BaseColor.png",  0},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Normal.png",     0},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Metallic.png",   0},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Roughness.png",  0},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Arms_Mat_Normal.png",     0},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Arms_Mat_Metallic.png",   0},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Arms_Mat_Roughness.png",  0},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Specular.png",   0},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_AO.png",         0},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Chest_Mat_BaseColor.png",      1},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Normal.png",         1},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Metallic.png",       1},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Roughness.png",      1},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Chest_Mat_Normal.png",         1},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Chest_Mat_Metallic.png",       1},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Chest_Mat_Roughness.png",      1},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Specular.png",       1},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_AO.png",             1},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Ears_Mat_BaseColor.png",  2},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Normal.png",     2},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Metallic.png",   2},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Roughness.png",  2},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Ears_Mat_Normal.png",     2},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Ears_Mat_Metallic.png",   2},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Ears_Mat_Roughness.png",  2},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Specular.png",   2},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_AO.png",         2},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Helmet_Mat_BaseColor.png",  3},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Normal.png",     3},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Metallic.png",   3},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Roughness.png",  3},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Helmet_Mat_Normal.png",     3},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Helmet_Mat_Metallic.png",   3},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Helmet_Mat_Roughness.png",  3},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Specular.png",   3},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_AO.png",         3},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Legs_Mat_BaseColor.png",  4},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Normal.png",     4},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Metallic.png",   4},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Roughness.png",  4},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Legs_Mat_Normal.png",     4},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Legs_Mat_Metallic.png",   4},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Legs_Mat_Roughness.png",  4},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Specular.png",   4},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_AO.png",         4},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/ODST_Shoulder_Mat_BaseColor.png",  5},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Normal.png",     5},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Metallic.png",   5},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Roughness.png",  5},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/ODST_Shoulder_Mat_Normal.png",     5},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/ODST_Shoulder_Mat_Metallic.png",   5},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/ODST_Shoulder_Mat_Roughness.png",  5},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Specular.png",   5},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_AO.png",         5},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Undersuit_Mat_BaseColor.png",  6},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Normal.png",     6},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Metallic.png",   6},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Roughness.png",  6},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Undersuit_Mat_Normal.png",     6},
+    {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Undersuit_Mat_Metallic.png",   6},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Undersuit_Mat_Roughness.png",  6},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Specular.png",   6},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_AO.png",         6},
 
     // Skipping 7
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/lambert1_Colour-Opacity.png",    8},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/lambert1_Nrm.png",               8},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/lambert1_Roughness.png",         8},
+    {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/lambert1_Nrm.png",               8},
+    {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/lambert1_Roughness.png",         8},
 };
 
 class VulkanApp {
@@ -277,9 +279,10 @@ private:
     VkBuffer                        indexBuffer;
     VkDeviceMemory                  indexBufferMemory;
 
-    std::vector<VkBuffer>           uniformBuffers;
-    std::vector<VkDeviceMemory>     uniformBuffersMemory;
-    std::vector<void*>              uniformBuffersMapped;
+    std::vector<VkBuffer>           vertexDataBuffers;
+    std::vector<VkDeviceMemory>     vertexDataBuffersMemory;
+    std::vector<void*>              vertexDataBuffersMapped;
+    VertexDataBufferObject          vertBufferObj;
 
     std::vector<VkBuffer>           materialBuffers;
     std::vector<VkDeviceMemory>     materialBuffersMemory;
@@ -333,8 +336,7 @@ private:
         CreateTextureSamplers();
         createVertexBuffer();
         createIndexBuffer();
-        createUniformBuffers();
-        CreateMaterialBuffer();
+        CreateUniformBuffers();
         createDescriptorPool();
         createDescriptorSets();
         createCommandBuffers();
@@ -355,8 +357,8 @@ private:
             vkDestroyBuffer(device, materialBuffers[i], nullptr);
             vkFreeMemory(device, materialBuffersMemory[i], nullptr);
 
-            vkDestroyBuffer(device, uniformBuffers[i], nullptr);
-            vkFreeMemory(device, uniformBuffersMemory[i], nullptr);
+            vkDestroyBuffer(device, vertexDataBuffers[i], nullptr);
+            vkFreeMemory(device, vertexDataBuffersMemory[i], nullptr);
         }
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -536,10 +538,10 @@ private:
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) 
         {
-            VkDescriptorBufferInfo uniformBufferInfo{};
-            uniformBufferInfo.buffer = uniformBuffers[i];
-            uniformBufferInfo.offset = 0;
-            uniformBufferInfo.range = sizeof(UniformBufferObject);
+            VkDescriptorBufferInfo vertexDataBufferInfo{};
+            vertexDataBufferInfo.buffer = vertexDataBuffers[i];
+            vertexDataBufferInfo.offset = 0;
+            vertexDataBufferInfo.range = sizeof(VertexDataBufferObject);
 
             std::vector<VkDescriptorBufferInfo> materialBufferInfos(materials.size());
             for (unsigned matId = 0; matId < materialBufferInfos.size(); matId++)
@@ -565,7 +567,7 @@ private:
             descriptorWrites[0].dstArrayElement = 0;
             descriptorWrites[0].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
             descriptorWrites[0].descriptorCount = 1;
-            descriptorWrites[0].pBufferInfo = &uniformBufferInfo;
+            descriptorWrites[0].pBufferInfo = &vertexDataBufferInfo;
 
             descriptorWrites[1].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[1].dstSet = descriptorSets[i];
@@ -621,21 +623,27 @@ private:
         }
     }
 
-    void createUniformBuffers() 
+    void CreateUniformBuffers() 
     {
-        VkDeviceSize bufferSize = sizeof(UniformBufferObject);
+        CreateVertexDataBuffer();
+        CreateMaterialBuffer();
+    }
 
-        uniformBuffers.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
-        uniformBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+    void CreateVertexDataBuffer()
+    {
+        VkDeviceSize bufferSize = sizeof(VertexDataBufferObject);
+
+        vertexDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        vertexDataBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        vertexDataBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
 
         for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
-            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, 
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT, 
-                uniformBuffers[i], uniformBuffersMemory[i]
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                vertexDataBuffers[i], vertexDataBuffersMemory[i]
             );
 
-            vkMapMemory(device, uniformBuffersMemory[i], 0, bufferSize, 0, &uniformBuffersMapped[i]);
+            vkMapMemory(device, vertexDataBuffersMemory[i], 0, bufferSize, 0, &vertexDataBuffersMapped[i]);
         }
     }
 
@@ -1353,6 +1361,10 @@ private:
 
             case (ETextureType::eTexture_Metallic):
                 materials[newTexture.materialId].metallicTextureId = textureId;
+                break;
+
+            case (ETextureType::eTexture_Roughness):
+                materials[newTexture.materialId].roughnessTextureId = textureId;
                 break;
 
             case (ETextureType::eTexture_None):
@@ -2185,24 +2197,23 @@ private:
         }
     }
 
-    void updateUniformBuffer(uint32_t currentImage)
+    void UpdateVertexDataBuffer(uint32_t currentImage)
     {
         static auto startTime = std::chrono::high_resolution_clock::now();
 
         auto currentTime = std::chrono::high_resolution_clock::now();
         float time = std::chrono::duration<float, std::chrono::seconds::period>(currentTime - startTime).count();
 
-        UniformBufferObject ubo{};
-        ubo.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-        ubo.model = glm::rotate(ubo.model, time * glm::radians(15.0f), glm::vec3(0.0f, 1.0f, 0.0f));
-        ubo.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.2f), glm::vec3(0.0f, 0.0f, 0.2f), glm::vec3(0.0f, 0.0f, 1.0f));
-        ubo.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
-        ubo.proj[1][1] *= -1; // OpenGL uses inverted Y coord
+        vertBufferObj.model = glm::rotate(glm::mat4(1.0f), glm::radians(90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+        vertBufferObj.model = glm::rotate(vertBufferObj.model, time * glm::radians(15.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        vertBufferObj.view = glm::lookAt(glm::vec3(2.0f, 2.0f, 2.2f), glm::vec3(0.0f, 0.0f, 0.2f), glm::vec3(0.0f, 0.0f, 1.0f));
+        vertBufferObj.proj = glm::perspective(glm::radians(45.0f), swapChainExtent.width / (float)swapChainExtent.height, 0.1f, 10.0f);
+        vertBufferObj.proj[1][1] *= -1; // OpenGL uses inverted Y coord
 
-        memcpy(uniformBuffersMapped[currentImage], &ubo, sizeof(ubo));
+        memcpy(vertexDataBuffersMapped[currentImage], &vertBufferObj, sizeof(vertBufferObj));
     }
 
-    void updateMaterialBuffer(uint32_t currentImage)
+    void UpdateMaterialBuffer(uint32_t currentImage)
     {
         unsigned i = 0;
         for (auto& material : materials)
@@ -2235,8 +2246,8 @@ private:
         // Only reset the fence if we are submitting work
         vkResetFences(device, 1, &inFlightFences[currentFrame]);
 
-        updateUniformBuffer(currentFrame);
-        updateMaterialBuffer(currentFrame);
+        UpdateVertexDataBuffer(currentFrame);
+        UpdateMaterialBuffer(currentFrame);
 
         vkResetCommandBuffer(commandBuffers[currentFrame], 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
