@@ -69,7 +69,9 @@ const std::string TEXTURE_PATH = "assets/viking_room/viking_room.png";
 
 struct Vertex {
     glm::vec3           pos;
-    glm::vec3           color;
+    glm::vec3           normal;
+    glm::vec3           tangent;
+    glm::vec3           bitangent;
     glm::vec2           texCoord;
     glm::lowp_uint64    matInd;
 
@@ -82,8 +84,8 @@ struct Vertex {
         return bindingDescription;
     }
 
-    static std::array<VkVertexInputAttributeDescription, 4> getAttributeDescriptions() {
-        std::array<VkVertexInputAttributeDescription, 4> attributeDescriptions{};
+    static std::array<VkVertexInputAttributeDescription, 6> getAttributeDescriptions() {
+        std::array<VkVertexInputAttributeDescription, 6> attributeDescriptions{};
 
         attributeDescriptions[0].binding = 0;
         attributeDescriptions[0].location = 0;
@@ -93,32 +95,47 @@ struct Vertex {
         attributeDescriptions[1].binding = 0;
         attributeDescriptions[1].location = 1;
         attributeDescriptions[1].format = VK_FORMAT_R32G32B32_SFLOAT;
-        attributeDescriptions[1].offset = offsetof(Vertex, color);
+        attributeDescriptions[1].offset = offsetof(Vertex, normal);
 
         attributeDescriptions[2].binding = 0;
         attributeDescriptions[2].location = 2;
-        attributeDescriptions[2].format = VK_FORMAT_R32G32_SFLOAT;
-        attributeDescriptions[2].offset = offsetof(Vertex, texCoord);
+        attributeDescriptions[2].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[2].offset = offsetof(Vertex, tangent);
 
         attributeDescriptions[3].binding = 0;
         attributeDescriptions[3].location = 3;
-        attributeDescriptions[3].format = VK_FORMAT_R32_UINT;
-        attributeDescriptions[3].offset = offsetof(Vertex, matInd);
+        attributeDescriptions[3].format = VK_FORMAT_R32G32B32_SFLOAT;
+        attributeDescriptions[3].offset = offsetof(Vertex, bitangent);
+
+        attributeDescriptions[4].binding = 0;
+        attributeDescriptions[4].location = 4;
+        attributeDescriptions[4].format = VK_FORMAT_R32G32_SFLOAT;
+        attributeDescriptions[4].offset = offsetof(Vertex, texCoord);
+
+        attributeDescriptions[5].binding = 0;
+        attributeDescriptions[5].location = 5;
+        attributeDescriptions[5].format = VK_FORMAT_R32_UINT;
+        attributeDescriptions[5].offset = offsetof(Vertex, matInd);
 
         return attributeDescriptions;
     }
 
     bool operator==(const Vertex& other) const {
-        return pos == other.pos && color == other.color && texCoord == other.texCoord && matInd == other.matInd;
+        return pos == other.pos 
+            && normal == other.normal 
+            && texCoord == other.texCoord 
+            && matInd == other.matInd;
     }
 };
 
 template<> struct std::hash<Vertex> {
     size_t operator()(Vertex const& vertex) const {
-        return ((std::hash<glm::vec3>()(vertex.pos) ^
-            (std::hash<glm::vec3>()(vertex.color) << 1)) >> 1) ^
-            (std::hash<glm::vec2>()(vertex.texCoord) << 1) ^
-            (std::hash<glm::lowp_uint8>()(vertex.matInd) << 1);
+        std::size_t posHash = std::hash<glm::vec3>()(vertex.pos);
+        std::size_t normalHash = std::hash<glm::vec3>()(vertex.normal);
+        std::size_t texCoordHash = std::hash<glm::vec2>()(vertex.texCoord);
+        std::size_t matIndHash = std::hash<glm::lowp_uint8>()(vertex.matInd);
+
+        return posHash ^ (normalHash << 1) ^ (texCoordHash << 2) ^ (matIndHash << 3);
     }
 };
 
@@ -128,11 +145,18 @@ struct VertexDataBufferObject {
     glm::mat4                proj;
 };
 
+struct SceneDataBufferObject {
+    glm::vec3               lightVec = { 1.0, 1.0, 5.0 };
+    glm::vec3               viewVec;
+    glm::float64            padding[5];
+};
+
 enum ETextureType {
     eTexture_Diffuse,
     eTexture_Normal,
     eTexture_Metallic,
     eTexture_Roughness,
+    eTexture_Specular,
 
     eTexture_None,
 };
@@ -158,11 +182,12 @@ struct Texture
 
 struct MaterialBufferObject
 {
-    glm::lowp_uint64        colorTextureId;
-    glm::lowp_uint64        normalTextureId;
-    glm::lowp_uint64        metallicTextureId;
-    glm::lowp_uint64        roughnessTextureId;
-    glm::float64            padding[4];
+    glm::uint        colorTextureId = -1;
+    glm::uint        normalTextureId = -1;
+    glm::uint        metallicTextureId = -1;
+    glm::uint        roughnessTextureId = -1;
+    glm::uint        specularTextureId = -1;
+    glm::uint        padding[11];
 };
 
 // Halo model constants
@@ -174,49 +199,49 @@ static std::vector<TextureLoad> HaloModelTextures = {
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Arms_Mat_Normal.png",     0},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Arms_Mat_Metallic.png",   0},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Arms_Mat_Roughness.png",  0},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_Specular.png",   0},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/Spartan_Arms_Mat_Specular.png",   0},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Arms_Mat_AO.png",         0},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Chest_Mat_BaseColor.png",      1},
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Chest_Mat_Normal.png",         1},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Chest_Mat_Metallic.png",       1},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Chest_Mat_Roughness.png",      1},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_Specular.png",       1},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/Spartan_Chest_Mat_Specular.png",       1},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Chest_Mat_AO.png",             1},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Ears_Mat_BaseColor.png",  2},
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Ears_Mat_Normal.png",     2},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Ears_Mat_Metallic.png",   2},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Ears_Mat_Roughness.png",  2},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_Specular.png",   2},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/Spartan_Ears_Mat_Specular.png",   2},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Ears_Mat_AO.png",         2},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Helmet_Mat_BaseColor.png",  3},
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Helmet_Mat_Normal.png",     3},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Helmet_Mat_Metallic.png",   3},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Helmet_Mat_Roughness.png",  3},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_Specular.png",   3},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/Spartan_Helmet_Mat_Specular.png",   3},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Helmet_Mat_AO.png",         3},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Legs_Mat_BaseColor.png",  4},
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Legs_Mat_Normal.png",     4},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Legs_Mat_Metallic.png",   4},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Legs_Mat_Roughness.png",  4},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_Specular.png",   4},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/Spartan_Legs_Mat_Specular.png",   4},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Legs_Mat_AO.png",         4},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/ODST_Shoulder_Mat_BaseColor.png",  5},
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/ODST_Shoulder_Mat_Normal.png",     5},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/ODST_Shoulder_Mat_Metallic.png",   5},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/ODST_Shoulder_Mat_Roughness.png",  5},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_Specular.png",   5},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/ODST_Shoulder_Mat_Specular.png",   5},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/ODST_Shoulder_Mat_AO.png",         5},
 
     {ETextureType::eTexture_Diffuse,    "assets/Spartan/Textures/Spartan_Undersuit_Mat_BaseColor.png",  6},
     {ETextureType::eTexture_Normal,     "assets/Spartan/Textures/Spartan_Undersuit_Mat_Normal.png",     6},
     {ETextureType::eTexture_Metallic,   "assets/Spartan/Textures/Spartan_Undersuit_Mat_Metallic.png",   6},
     {ETextureType::eTexture_Roughness,  "assets/Spartan/Textures/Spartan_Undersuit_Mat_Roughness.png",  6},
-    {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_Specular.png",   6},
+    {ETextureType::eTexture_Specular,   "assets/Spartan/Textures/Spartan_Undersuit_Mat_Specular.png",   6},
     {ETextureType::eTexture_None,       "assets/Spartan/Textures/Spartan_Undersuit_Mat_AO.png",         6},
 
     // Skipping 7
@@ -283,6 +308,11 @@ private:
     std::vector<VkDeviceMemory>     vertexDataBuffersMemory;
     std::vector<void*>              vertexDataBuffersMapped;
     VertexDataBufferObject          vertBufferObj;
+
+    std::vector<VkBuffer>           sceneDataBuffers;
+    std::vector<VkDeviceMemory>     sceneDataBuffersMemory;
+    std::vector<void*>              sceneDataBuffersMapped;
+    SceneDataBufferObject           sceneBufferObj;
 
     std::vector<VkBuffer>           materialBuffers;
     std::vector<VkDeviceMemory>     materialBuffersMemory;
@@ -359,6 +389,9 @@ private:
 
             vkDestroyBuffer(device, vertexDataBuffers[i], nullptr);
             vkFreeMemory(device, vertexDataBuffersMemory[i], nullptr);
+
+            vkDestroyBuffer(device, sceneDataBuffers[i], nullptr);
+            vkFreeMemory(device, sceneDataBuffersMemory[i], nullptr);
         }
 
         vkDestroyDescriptorPool(device, descriptorPool, nullptr);
@@ -431,6 +464,8 @@ private:
         std::unordered_map<Vertex, uint32_t> uniqueVertices{};
         for (const auto& shape : shapes) 
         {
+            std::array<uint32_t, 3> faceVertices;
+
             unsigned currVertId = 0, currFaceId = 0;
             for (const auto& index : shape.mesh.indices) 
             {
@@ -447,7 +482,12 @@ private:
                     1.0f - attrib.texcoords[2 * index.texcoord_index + 1]
                 };
 
-                vertex.color = { 1.0f, 1.0f, 1.0f };
+                vertex.normal = {
+                    attrib.normals[3 * index.normal_index + 0],
+                    attrib.normals[3 * index.normal_index + 1],
+                    attrib.normals[3 * index.normal_index + 2]
+                };
+
                 vertex.matInd = shape.mesh.material_ids[currFaceId];
 
                 if (uniqueVertices.count(vertex) == 0) {
@@ -455,14 +495,51 @@ private:
                     vertices.push_back(vertex);
                 }
 
-                indices.push_back(uniqueVertices[vertex]);
+                auto vertexIndex = uniqueVertices[vertex];
+                indices.push_back(vertexIndex);
+
+                // Store face vertices for tangent and bitangent calculations
+                // Triangulate is on so every face has 3 vertices
+                faceVertices[currVertId % 3] = vertexIndex;
 
                 currVertId++;
                 currFaceId = currVertId / 3;
+
+                // We are at the end of the triangle, calculate tangent and bitangent
+                if (currVertId > 0 && currVertId % 3 == 0)
+                {
+                    Vertex& vert0 = vertices[faceVertices[0]];
+                    Vertex& vert1 = vertices[faceVertices[1]];
+                    Vertex& vert2 = vertices[faceVertices[2]];
+
+                    glm::vec3 edge1 = vert1.pos - vert0.pos;
+                    glm::vec3 edge2 = vert2.pos - vert0.pos;
+                    glm::vec2 deltaUV1 = vert1.texCoord - vert0.texCoord;
+                    glm::vec2 deltaUV2 = vert2.texCoord - vert0.texCoord;
+
+                    float f = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV2.x * deltaUV1.y);
+
+                    glm::vec3 tangent;
+                    tangent.x = f * (deltaUV2.y * edge1.x - deltaUV1.y * edge2.x);
+                    tangent.y = f * (deltaUV2.y * edge1.y - deltaUV1.y * edge2.y);
+                    tangent.z = f * (deltaUV2.y * edge1.z - deltaUV1.y * edge2.z);
+                    tangent = glm::normalize(tangent);
+
+                    glm::vec3 bitangent;
+                    bitangent.x = f * (-deltaUV2.x * edge1.x + deltaUV1.x * edge2.x);
+                    bitangent.y = f * (-deltaUV2.x * edge1.y + deltaUV1.x * edge2.y);
+                    bitangent.z = f * (-deltaUV2.x * edge1.z + deltaUV1.x * edge2.z);
+                    bitangent = glm::normalize(bitangent);
+
+                    vert0.tangent = tangent;
+                    vert1.tangent = tangent;
+                    vert2.tangent = tangent;
+
+                    vert0.bitangent = bitangent;
+                    vert1.bitangent = bitangent;
+                    vert2.bitangent = bitangent;
+                }
             }
-
-            // Triangulate is on so every face has 3 vertices
-
         }
 
         for (auto& loadTexture : HaloModelTextures)
@@ -490,28 +567,35 @@ private:
 
     void createDescriptorSetLayout()
     {
-        VkDescriptorSetLayoutBinding uboLayoutBinding{};
-        uboLayoutBinding.binding = 0;
-        uboLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        uboLayoutBinding.descriptorCount = 1;
-        uboLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
-        uboLayoutBinding.pImmutableSamplers = nullptr; // Optional
+        VkDescriptorSetLayoutBinding vertexLayoutBinding{};
+        vertexLayoutBinding.binding = 0;
+        vertexLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        vertexLayoutBinding.descriptorCount = 1;
+        vertexLayoutBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
+        vertexLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
+        VkDescriptorSetLayoutBinding sceneLayoutBinding{};
+        sceneLayoutBinding.binding = 1;
+        sceneLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        sceneLayoutBinding.descriptorCount = 1;
+        sceneLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        sceneLayoutBinding.pImmutableSamplers = nullptr; // Optional
+
+        VkDescriptorSetLayoutBinding materialLayoutBinding{};
+        materialLayoutBinding.binding = 2;
+        materialLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        materialLayoutBinding.descriptorCount = static_cast<uint32_t>(materials.size());
+        materialLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
+        materialLayoutBinding.pImmutableSamplers = nullptr; // Optional
 
         VkDescriptorSetLayoutBinding samplerLayoutBinding{};
-        samplerLayoutBinding.binding = 1;
+        samplerLayoutBinding.binding = 3;
         samplerLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
         samplerLayoutBinding.descriptorCount = totalNumOfTextures;
         samplerLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
         samplerLayoutBinding.pImmutableSamplers = nullptr;
 
-        VkDescriptorSetLayoutBinding materialLayoutBinding{};
-        materialLayoutBinding.binding = 2;
-        materialLayoutBinding.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        materialLayoutBinding.descriptorCount = materials.size();
-        materialLayoutBinding.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT;
-        materialLayoutBinding.pImmutableSamplers = nullptr; // Optional
-
-        std::array<VkDescriptorSetLayoutBinding, 3> bindings = { uboLayoutBinding, samplerLayoutBinding, materialLayoutBinding };
+        std::array<VkDescriptorSetLayoutBinding, 4> bindings = { vertexLayoutBinding, sceneLayoutBinding, materialLayoutBinding, samplerLayoutBinding };
         VkDescriptorSetLayoutCreateInfo layoutInfo{};
         layoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
         layoutInfo.bindingCount = static_cast<uint32_t>(bindings.size());
@@ -543,6 +627,11 @@ private:
             vertexDataBufferInfo.offset = 0;
             vertexDataBufferInfo.range = sizeof(VertexDataBufferObject);
 
+            VkDescriptorBufferInfo sceneDataBufferInfo{};
+            sceneDataBufferInfo.buffer = sceneDataBuffers[i];
+            sceneDataBufferInfo.offset = 0;
+            sceneDataBufferInfo.range = sizeof(SceneDataBufferObject);
+
             std::vector<VkDescriptorBufferInfo> materialBufferInfos(materials.size());
             for (unsigned matId = 0; matId < materialBufferInfos.size(); matId++)
             {
@@ -559,7 +648,7 @@ private:
                 imageInfos[texId].sampler = textures[texId].textureSampler;
             }
 
-            std::array<VkWriteDescriptorSet, 3> descriptorWrites{};
+            std::array<VkWriteDescriptorSet, 4> descriptorWrites{};
 
             descriptorWrites[0].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[0].dstSet = descriptorSets[i];
@@ -573,9 +662,9 @@ private:
             descriptorWrites[1].dstSet = descriptorSets[i];
             descriptorWrites[1].dstBinding = 1;
             descriptorWrites[1].dstArrayElement = 0;
-            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
-            descriptorWrites[1].descriptorCount = static_cast<uint32_t>(imageInfos.size());
-            descriptorWrites[1].pImageInfo = imageInfos.data();
+            descriptorWrites[1].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+            descriptorWrites[1].descriptorCount = 1;
+            descriptorWrites[1].pBufferInfo = &sceneDataBufferInfo;
 
             descriptorWrites[2].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
             descriptorWrites[2].dstSet = descriptorSets[i];
@@ -585,19 +674,29 @@ private:
             descriptorWrites[2].descriptorCount = static_cast<uint32_t>(materialBufferInfos.size());
             descriptorWrites[2].pBufferInfo = materialBufferInfos.data();
 
+            descriptorWrites[3].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            descriptorWrites[3].dstSet = descriptorSets[i];
+            descriptorWrites[3].dstBinding = 3;
+            descriptorWrites[3].dstArrayElement = 0;
+            descriptorWrites[3].descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+            descriptorWrites[3].descriptorCount = static_cast<uint32_t>(imageInfos.size());
+            descriptorWrites[3].pImageInfo = imageInfos.data();
+
             vkUpdateDescriptorSets(device, static_cast<uint32_t>(descriptorWrites.size()), descriptorWrites.data(), 0, nullptr);
         }
     }
 
     void createDescriptorPool() 
     {
-        std::array<VkDescriptorPoolSize, 3> poolSizes{};
+        std::array<VkDescriptorPoolSize, 4> poolSizes{};
         poolSizes[0].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[0].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
-        poolSizes[1].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[1].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[1].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
         poolSizes[2].type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         poolSizes[2].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
+        poolSizes[3].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
+        poolSizes[3].descriptorCount = static_cast<uint32_t>(MAX_FRAMES_IN_FLIGHT);
 
         VkDescriptorPoolCreateInfo poolInfo{};
         poolInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO;
@@ -627,6 +726,7 @@ private:
     {
         CreateVertexDataBuffer();
         CreateMaterialBuffer();
+        CreateSceneDataBuffer();
     }
 
     void CreateVertexDataBuffer()
@@ -644,6 +744,24 @@ private:
             );
 
             vkMapMemory(device, vertexDataBuffersMemory[i], 0, bufferSize, 0, &vertexDataBuffersMapped[i]);
+        }
+    }
+
+    void CreateSceneDataBuffer()
+    {
+        VkDeviceSize bufferSize = sizeof(SceneDataBufferObject);
+
+        sceneDataBuffers.resize(MAX_FRAMES_IN_FLIGHT);
+        sceneDataBuffersMemory.resize(MAX_FRAMES_IN_FLIGHT);
+        sceneDataBuffersMapped.resize(MAX_FRAMES_IN_FLIGHT);
+
+        for (size_t i = 0; i < MAX_FRAMES_IN_FLIGHT; i++) {
+            createBuffer(bufferSize, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+                sceneDataBuffers[i], sceneDataBuffersMemory[i]
+            );
+
+            vkMapMemory(device, sceneDataBuffersMemory[i], 0, bufferSize, 0, &sceneDataBuffersMapped[i]);
         }
     }
 
@@ -1365,6 +1483,10 @@ private:
 
             case (ETextureType::eTexture_Roughness):
                 materials[newTexture.materialId].roughnessTextureId = textureId;
+                break;
+
+            case (ETextureType::eTexture_Specular):
+                materials[newTexture.materialId].specularTextureId = textureId;
                 break;
 
             case (ETextureType::eTexture_None):
@@ -2095,6 +2217,13 @@ private:
     {
         static bool metricsWindow = true;
         ImGui::ShowMetricsWindow(&metricsWindow);
+
+        ImGui::Begin("Scene stats!");
+        {
+            ImGui::InputFloat3("Light Position", &sceneBufferObj.lightVec[0]);
+            ImGui::InputFloat3("Camera Position", &sceneBufferObj.viewVec[0]);
+        }
+        ImGui::End();
     }
 
     void UIRecordCommandBuffer(VkCommandBuffer commandBuffer)
@@ -2215,14 +2344,19 @@ private:
 
     void UpdateMaterialBuffer(uint32_t currentImage)
     {
-        unsigned i = 0;
+        char* destinationPtr = static_cast<char*>(materialBuffersMapped[currentImage]);
         for (auto& material : materials)
         {
-            char* destinationPtr = static_cast<char*>(materialBuffersMapped[currentImage]);
-            destinationPtr += materialBufferSize * i;
             memcpy(destinationPtr, &material, sizeof(material));
-            i++;
+            destinationPtr += materialBufferSize;
         }
+    }
+
+    void UpdateSceneBuffer(uint32_t currentImage)
+    {
+        sceneBufferObj.viewVec = glm::normalize(-glm::vec3(vertBufferObj.view[3]));
+
+        memcpy(sceneDataBuffersMapped[currentImage], &sceneBufferObj, sizeof(sceneBufferObj));
     }
 
     void drawFrame() 
@@ -2248,6 +2382,7 @@ private:
 
         UpdateVertexDataBuffer(currentFrame);
         UpdateMaterialBuffer(currentFrame);
+        UpdateSceneBuffer(currentFrame);
 
         vkResetCommandBuffer(commandBuffers[currentFrame], 0);
         recordCommandBuffer(commandBuffers[currentFrame], imageIndex);
